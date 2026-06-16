@@ -10,7 +10,7 @@ let settings = {
   orgTh: 'การไฟฟ้าส่วนภูมิภาค',
   orgEn: 'PROVINCIAL ELECTRICITY AUTHORITY',
   defaultFrom: '',
-  defaultTo: 'กบพ.ฉ.1',
+  defaultTo: 'กบพ.(ฉ1)',
   logo: '',
   mb52LastUpdate: '', 
 };
