@@ -1,19 +1,18 @@
 // ── Supabase Configuration ──
 const SUPABASE_URL = 'https://ffiejosogbzamjdxwwfr.supabase.co'; 
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmaWVqb3NvZ2J6YW1qZHh3d2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTUwNjIsImV4cCI6MjA5NzEzMTA2Mn0.jL8lix3C6npQBQw487wnoOr-KqaKF7f1GgF6Hxt_vNg';
-// แก้ไขตัวแปรเป็น supabaseClient เพื่อไม่ให้ชนกับไลบรารี
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── State (Global Variables) ──
 let records = []; 
-let mb52Data = []; 
+let mb52Data = []; // ตอนนี้จะถูกโหลดมาจาก Supabase กลาง
 let settings = {
   orgTh: 'การไฟฟ้าส่วนภูมิภาค',
   orgEn: 'PROVINCIAL ELECTRICITY AUTHORITY',
   defaultFrom: '',
   defaultTo: 'กบพ.ฉ.1',
   logo: '',
-  mb52LastUpdate: '',
+  mb52LastUpdate: '', // เก็บวันที่อัปเดตล่าสุด
 };
 
 // ── Init ──
@@ -29,19 +28,21 @@ async function init() {
   
   if (window.innerWidth < 768) document.getElementById('menuBtn').style.display = 'block';
 
-  // โหลดข้อมูลจาก Supabase ตอนเปิดเว็บ
-  await fetchRecordsFromDB();
+  // 🌟 โหลดข้อมูลประวัติ และพัสดุ MB52 จาก Supabase พร้อมๆ กัน
+  await Promise.all([
+      fetchRecordsFromDB(),
+      fetchMB52FromDB()
+  ]);
 }
 
 // ── Database Operations (Supabase) ──
 async function fetchRecordsFromDB() {
     const badge = document.getElementById('syncStatusBadge');
     badge.style.display = 'inline-block';
-    badge.textContent = '🔄 กำลังดึงข้อมูล...';
+    badge.textContent = '🔄 กำลังดึงข้อมูลเอกสาร...';
     badge.className = 'badge badge-blue';
 
     try {
-        // ใช้ supabaseClient
         const { data: docs, error } = await supabaseClient
             .from('documents')
             .select(`
@@ -72,7 +73,7 @@ async function fetchRecordsFromDB() {
             }))
         }));
 
-        badge.textContent = '✅ เชื่อมต่อฐานข้อมูลแล้ว';
+        badge.textContent = '✅ ข้อมูลเอกสารพร้อม';
         badge.className = 'badge badge-green';
         setTimeout(() => badge.style.display = 'none', 3000);
 
@@ -81,18 +82,38 @@ async function fetchRecordsFromDB() {
 
     } catch (err) {
         console.error("Supabase Fetch Error:", err);
-        badge.textContent = '❌ โหลดข้อมูลผิดพลาด';
+        badge.textContent = '❌ โหลดเอกสารผิดพลาด';
         badge.className = 'badge badge-danger';
     }
 }
 
-// ── Local Storage (เก็บเฉพาะ Settings กับ MB52) ──
+// 🌟 ฟังก์ชันใหม่: ดึงข้อมูลพัสดุกลางจากฐานข้อมูล
+async function fetchMB52FromDB() {
+    try {
+        // ใช้คำสั่ง select เพื่อดึงข้อมูลทั้งหมดมาไว้ทำ Autocomplete
+        const { data, error } = await supabaseClient
+            .from('mb52_materials')
+            .select('material_code, material_desc');
+            
+        if (error) throw error;
+
+        mb52Data = data.map(item => ({
+            code: item.material_code,
+            desc: item.material_desc
+        }));
+
+        document.getElementById('mb52Count').textContent = mb52Data.length;
+        updateMB52Badge();
+    } catch (err) {
+        console.error("Error fetching MB52 from DB:", err);
+    }
+}
+
+// ── Local Storage (เก็บเฉพาะ Settings เล็กๆ น้อยๆ ในเครื่อง) ──
 function loadLocalSettings() {
   try {
     const s = localStorage.getItem('pea_settings');
     if (s) settings = { ...settings, ...JSON.parse(s) };
-    const m = localStorage.getItem('pea_mb52');
-    if (m) mb52Data = JSON.parse(m);
   } catch (e) { console.error("Error loading local storage", e); }
 }
 
@@ -117,7 +138,6 @@ function applySettings() {
   if (settings.mb52LastUpdate) {
     document.getElementById('mb52LastUpdate').textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
   }
-  document.getElementById('mb52Count').textContent = mb52Data.length;
 }
 
 // ── Navigation ──
@@ -181,30 +201,74 @@ function removeLogo() {
   saveLocalSettings();
 }
 
-function importMB52(e) {
+// 🌟 อัปเดต: เปลี่ยนระบบอ่านไฟล์และโยนเข้า Database
+async function importMB52(e) {
   const file = e.target.files[0];
   if (!file) return;
+  
+  // แจ้งเตือนผู้ใช้ระหว่างอัปโหลด
+  const uploadBtn = e.target.previousElementSibling;
+  const originalHtml = uploadBtn.innerHTML;
+  uploadBtn.innerHTML = '⏳ กำลังอัปโหลดขึ้น Database...';
+  uploadBtn.disabled = true;
+
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     const lines = ev.target.result.split('\n');
-    mb52Data = [];
+    let dbPayload = [];
+    
+    // จัดรูปแบบข้อมูลเตรียมส่งเข้า DB
     lines.forEach(line => {
       const parts = line.split('\t');
       if (parts.length >= 2) {
         const code = parts[0].trim();
         const desc = parts[1].replace(/^"|"$/g, '').trim();
         if (code && desc && code.match(/^\d/)) {
-          mb52Data.push({ code, desc });
+          dbPayload.push({ material_code: code, material_desc: desc });
         }
       }
     });
-    localStorage.setItem('pea_mb52', JSON.stringify(mb52Data));
-    settings.mb52LastUpdate = new Date().toLocaleDateString('th-TH');
-    saveLocalSettings();
-    document.getElementById('mb52Count').textContent = mb52Data.length;
-    document.getElementById('mb52LastUpdate').textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
-    updateMB52Badge();
-    alert(`นำเข้าข้อมูล MB52 สำเร็จ: ${mb52Data.length} รายการ (บันทึกในเบราว์เซอร์)`);
+
+    if(dbPayload.length === 0) {
+        alert("ไม่พบข้อมูลพัสดุในไฟล์");
+        uploadBtn.innerHTML = originalHtml;
+        uploadBtn.disabled = false;
+        return;
+    }
+
+    try {
+        // ต้องแบ่งส่งเป็นชุด (Chunking) ชุดละ 1000 รายการ ป้องกัน Request ปฏิเสธ (Payload Too Large)
+        const chunkSize = 1000;
+        for (let i = 0; i < dbPayload.length; i += chunkSize) {
+            const chunk = dbPayload.slice(i, i + chunkSize);
+            // ใช้ .upsert คือ ถ้ารหัสพัสดุมีอยู่แล้วให้อัปเดตชื่อใหม่ให้ ถ้าไม่มีให้เพิ่มใหม่
+            const { error } = await supabaseClient
+                .from('mb52_materials')
+                .upsert(chunk, { onConflict: 'material_code' });
+                
+            if (error) throw error;
+        }
+
+        // อัปเดตข้อมูลมาใส่ Global State ทันทีไม่ต้องโหลดหน้าเว็บใหม่
+        mb52Data = dbPayload.map(item => ({ code: item.material_code, desc: item.material_desc }));
+
+        // บันทึกวันที่อัปเดตลง LocalSettings
+        settings.mb52LastUpdate = new Date().toLocaleDateString('th-TH');
+        saveLocalSettings();
+
+        document.getElementById('mb52Count').textContent = mb52Data.length;
+        document.getElementById('mb52LastUpdate').textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
+        updateMB52Badge();
+        
+        alert(`อัปโหลดข้อมูล MB52 สำเร็จ: ${mb52Data.length} รายการ (บันทึกบนคลาวด์แล้ว)`);
+
+    } catch (err) {
+        console.error("Upload MB52 Error:", err);
+        alert("เกิดข้อผิดพลาดในการอัปโหลด: " + err.message);
+    } finally {
+        uploadBtn.innerHTML = originalHtml;
+        uploadBtn.disabled = false;
+    }
   };
   reader.readAsText(file, 'TIS-620');
 }

@@ -1,10 +1,13 @@
 // ── Records & History ──
 function renderRecords() {
   const q = document.getElementById('searchRec').value.toLowerCase();
+  
+  // เพิ่มระบบค้นหาให้ครอบคลุมถึงชื่อผู้ให้โอน (donor) ในรายการพัสดุด้วย
   const filtered = records.filter(r =>
     (r.docno || '').toLowerCase().includes(q) ||
     (r.from || '').toLowerCase().includes(q) ||
-    (r.to || '').toLowerCase().includes(q)
+    (r.to || '').toLowerCase().includes(q) ||
+    (r.rows || []).some(row => (row.donor || '').toLowerCase().includes(q))
   );
   
   const tbody = document.getElementById('recordsBody');
@@ -13,13 +16,17 @@ function renderRecords() {
     return; 
   }
   
-  tbody.innerHTML = filtered.map((r, i) => `
+  tbody.innerHTML = filtered.map((r, i) => {
+    // ดึงชื่อผู้ให้โอนที่ไม่ซ้ำกันมาจากรายการพัสดุ
+    const uniqueDonors = [...new Set((r.rows || []).map(item => item.donor).filter(Boolean))].join(', ');
+    
+    return `
     <tr>
       <td style="text-align:center;">${i + 1}</td>
       <td style="text-align:center;">${formatThaiDate(r.date)}</td>
       <td style="text-align:left;">${r.docno === '-' ? '' : r.docno}</td>
       <td style="text-align:left;">${r.from || '-'}</td>
-      <td style="text-align:left;">${r.to || '-'}</td>
+      <td style="text-align:left;">${uniqueDonors || '-'}</td>
       <td style="text-align:left;">${(r.rows || []).length} รายการ</td>
       <td style="text-align:center;">
         <div style="display:flex; gap:6px; justify-content:center;">
@@ -28,9 +35,11 @@ function renderRecords() {
             <button class="btn btn-danger btn-sm" onclick="deleteRecordFromDB(${r.id})" title="ลบเอกสาร">🗑</button>
         </div>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
+// ── เปิด Modal กรอกเลขที่ ──
 function updateDocNo(id) {
   const r = records.find(x => x.id === id);
   if (!r) return;
@@ -47,6 +56,7 @@ function closeDocNoModal() {
   document.getElementById('m_docno_input').value = '';
 }
 
+// ── บันทึกเลขที่กลับไปยัง Supabase ──
 async function saveDocNoDB() {
   const id = Number(document.getElementById('m_docno_id').value);
   const newDocNo = document.getElementById('m_docno_input').value.trim() || '-';
@@ -55,7 +65,7 @@ async function saveDocNoDB() {
   if (!r) return;
 
   try {
-      // ใช้ supabaseClient
+      // ใช้ supabaseClient ให้ตรงกับที่ประการใน app.js
       const { error } = await supabaseClient
           .from('documents')
           .update({ doc_no: newDocNo })
@@ -73,6 +83,7 @@ async function saveDocNoDB() {
   }
 }
 
+// ── โหลดข้อมูลใส่ฟอร์ม ──
 function loadRecord(id) {
   const r = records.find(x => x.id === id);
   if (!r) return;
@@ -105,11 +116,12 @@ function loadRecord(id) {
   showPage('form');
 }
 
+// ── ลบข้อมูลจาก Database ──
 async function deleteRecordFromDB(id) {
   if (!confirm('ยืนยันการลบเอกสารนี้ออกจากระบบ? ไม่สามารถกู้คืนได้')) return;
   
   try {
-      // ใช้ supabaseClient
+      // ใช้ supabaseClient ให้ตรงกับที่ประการใน app.js
       const { error } = await supabaseClient
           .from('documents')
           .delete()
