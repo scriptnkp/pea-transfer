@@ -37,8 +37,8 @@ function addRow() {
     </td>
     <td><input type="text" id="batch-${rowCount}" value="N" style="width:50px;text-align:center;"></td>
     <td><input type="number" id="qty-${rowCount}" value="1" min="1" style="width:70px;text-align:center;"></td>
-    <td><input type="text" id="donor-${rowCount}" placeholder="กฟจ.นครพนม (D060)0021" style="min-width:160px;"></td>
-    <td><input type="text" id="location-${rowCount}" placeholder="คลังกลาง / ชั้น 2" style="min-width:130px;"></td>
+    <td><input type="text" id="donor-${rowCount}" placeholder="กฟจ.นครพนม" style="min-width:160px;"></td>
+    <td><input type="text" id="location-${rowCount}" placeholder="0021" style="min-width:130px;"></td>
     <td><button class="btn-icon" onclick="removeRow(${rowCount})" title="ลบ">🗑</button></td>
   `;
   tbody.appendChild(tr);
