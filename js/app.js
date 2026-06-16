@@ -20,13 +20,23 @@ async function init() {
   loadLocalSettings();
   applySettings();
   if(typeof addRow === 'function') addRow();
-  document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
-  if (settings.defaultFrom) document.getElementById('f_from').value = settings.defaultFrom;
-  if (settings.defaultTo) document.getElementById('f_to').value = settings.defaultTo;
+  
+  const dateEl = document.getElementById('f_date');
+  if (dateEl) dateEl.value = new Date().toISOString().split('T')[0];
+  
+  if (settings.defaultFrom) {
+      const fromEl = document.getElementById('f_from');
+      if (fromEl) fromEl.value = settings.defaultFrom;
+  }
+  if (settings.defaultTo) {
+      const toEl = document.getElementById('f_to');
+      if (toEl) toEl.value = settings.defaultTo;
+  }
   if(typeof syncFromField === 'function') syncFromField();
   updateMB52Badge();
   
-  if (window.innerWidth < 768) document.getElementById('menuBtn').style.display = 'block';
+  const menuBtn = document.getElementById('menuBtn');
+  if (menuBtn && window.innerWidth < 768) menuBtn.style.display = 'block';
 
   await Promise.all([
       fetchRecordsFromDB(),
@@ -37,9 +47,11 @@ async function init() {
 // ── Database Operations (Supabase) ──
 async function fetchRecordsFromDB() {
     const badge = document.getElementById('syncStatusBadge');
-    badge.style.display = 'inline-block';
-    badge.textContent = '🔄 กำลังดึงข้อมูลเอกสาร...';
-    badge.className = 'badge badge-blue';
+    if (badge) {
+        badge.style.display = 'inline-block';
+        badge.textContent = '🔄 กำลังดึงข้อมูลเอกสาร...';
+        badge.className = 'badge badge-blue';
+    }
 
     try {
         const { data: docs, error } = await supabaseClient
@@ -73,17 +85,24 @@ async function fetchRecordsFromDB() {
             }))
         }));
 
-        badge.textContent = '✅ ข้อมูลเอกสารพร้อม';
-        badge.className = 'badge badge-green';
-        setTimeout(() => badge.style.display = 'none', 3000);
+        if (badge) {
+            badge.textContent = '✅ ข้อมูลเอกสารพร้อม';
+            badge.className = 'badge badge-green';
+            setTimeout(() => badge.style.display = 'none', 3000);
+        }
 
-        if(document.getElementById('page-records').style.display !== 'none' && typeof renderRecords === 'function') renderRecords();
-        if(document.getElementById('page-dashboard').style.display !== 'none' && typeof renderDashboard === 'function') renderDashboard();
+        const pageRecords = document.getElementById('page-records');
+        if(pageRecords && pageRecords.style.display !== 'none' && typeof renderRecords === 'function') renderRecords();
+        
+        const pageDashboard = document.getElementById('page-dashboard');
+        if(pageDashboard && pageDashboard.style.display !== 'none' && typeof renderDashboard === 'function') renderDashboard();
 
     } catch (err) {
         console.error("Supabase Fetch Error:", err);
-        badge.textContent = '❌ โหลดเอกสารผิดพลาด';
-        badge.className = 'badge badge-danger';
+        if (badge) {
+            badge.textContent = '❌ โหลดเอกสารผิดพลาด';
+            badge.className = 'badge badge-danger';
+        }
     }
 }
 
@@ -100,14 +119,16 @@ async function fetchMB52FromDB() {
             desc: item.material_desc
         }));
 
-        document.getElementById('mb52Count').textContent = mb52Data.length;
+        const countEl = document.getElementById('mb52Count');
+        if (countEl) countEl.textContent = mb52Data.length;
+        
         updateMB52Badge();
     } catch (err) {
         console.error("Error fetching MB52 from DB:", err);
     }
 }
 
-// ── Local Storage (เก็บเฉพาะ Settings เล็กๆ น้อยๆ ในเครื่อง) ──
+// ── Local Storage ──
 function loadLocalSettings() {
   try {
     const s = localStorage.getItem('pea_settings');
@@ -121,39 +142,62 @@ function saveLocalSettings() {
 
 // ── Settings Application ──
 function applySettings() {
-  document.getElementById('sidebarOrgName').textContent = settings.orgTh;
-  document.getElementById('s_orgTh').value = settings.orgTh;
-  document.getElementById('s_orgEn').value = settings.orgEn;
-  document.getElementById('s_defaultFrom').value = settings.defaultFrom;
-  document.getElementById('s_defaultTo').value = settings.defaultTo;
+  const orgNameEl = document.getElementById('sidebarOrgName');
+  if (orgNameEl) orgNameEl.textContent = settings.orgTh;
+  
+  const sOrgTh = document.getElementById('s_orgTh');
+  if (sOrgTh) sOrgTh.value = settings.orgTh;
+  
+  const sOrgEn = document.getElementById('s_orgEn');
+  if (sOrgEn) sOrgEn.value = settings.orgEn;
+  
+  const sDefaultFrom = document.getElementById('s_defaultFrom');
+  if (sDefaultFrom) sDefaultFrom.value = settings.defaultFrom;
+  
+  const sDefaultTo = document.getElementById('s_defaultTo');
+  if (sDefaultTo) sDefaultTo.value = settings.defaultTo;
+
   if (settings.logo) {
-    document.getElementById('sidebarLogo').src = settings.logo;
-    document.getElementById('sidebarLogo').style.display = 'block';
-    document.getElementById('logoPreviewImg').src = settings.logo;
-    document.getElementById('logoPreviewImg').style.display = 'block';
-    document.getElementById('logoPlaceholder').style.display = 'none';
+    const sidebarLogo = document.getElementById('sidebarLogo');
+    if (sidebarLogo) { sidebarLogo.src = settings.logo; sidebarLogo.style.display = 'block'; }
+    
+    const previewImg = document.getElementById('logoPreviewImg');
+    if (previewImg) { previewImg.src = settings.logo; previewImg.style.display = 'block'; }
+    
+    const placeholder = document.getElementById('logoPlaceholder');
+    if (placeholder) placeholder.style.display = 'none';
   }
+  
   if (settings.mb52LastUpdate) {
-    document.getElementById('mb52LastUpdate').textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
+    const updateEl = document.getElementById('mb52LastUpdate');
+    if (updateEl) updateEl.textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
   }
 }
 
 // ── Navigation ──
 function showPage(page) {
   ['form', 'records', 'dashboard', 'settings'].forEach(p => {
-    document.getElementById('page-' + p).style.display = p === page ? '' : 'none';
-    document.getElementById('nav-' + p).classList.toggle('active', p === page);
+    const pageEl = document.getElementById('page-' + p);
+    if (pageEl) pageEl.style.display = p === page ? '' : 'none';
+    
+    const navEl = document.getElementById('nav-' + p);
+    if (navEl) navEl.classList.toggle('active', p === page);
   });
+  
   const titles = { form: 'กรอกแบบฟอร์มขออนุมัติโอนพัสดุ', records: 'ประวัติเอกสาร', dashboard: 'Dashboard สรุปภาพรวม', settings: 'ตั้งค่าระบบ' };
-  document.getElementById('pageTitle').textContent = titles[page];
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl) titleEl.textContent = titles[page];
   
   if (page === 'records' && typeof renderRecords === 'function') renderRecords();
   if (page === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
-  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+  
+  const sidebar = document.getElementById('sidebar');
+  if (window.innerWidth < 768 && sidebar) sidebar.classList.remove('open');
 }
 
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.classList.toggle('open');
 }
 
 // ── Utility ──
@@ -166,11 +210,14 @@ function formatThaiDate(dateStr) {
 
 // ── Settings Page Functions ──
 function saveSettings() {
-  settings.orgTh = document.getElementById('s_orgTh').value;
-  settings.orgEn = document.getElementById('s_orgEn').value;
-  settings.defaultFrom = document.getElementById('s_defaultFrom').value;
-  settings.defaultTo = document.getElementById('s_defaultTo').value;
-  document.getElementById('sidebarOrgName').textContent = settings.orgTh;
+  settings.orgTh = document.getElementById('s_orgTh')?.value || settings.orgTh;
+  settings.orgEn = document.getElementById('s_orgEn')?.value || settings.orgEn;
+  settings.defaultFrom = document.getElementById('s_defaultFrom')?.value || '';
+  settings.defaultTo = document.getElementById('s_defaultTo')?.value || '';
+  
+  const orgNameEl = document.getElementById('sidebarOrgName');
+  if (orgNameEl) orgNameEl.textContent = settings.orgTh;
+  
   saveLocalSettings();
 }
 
@@ -180,59 +227,76 @@ function uploadLogo(e) {
   const reader = new FileReader();
   reader.onload = ev => {
     settings.logo = ev.target.result;
-    document.getElementById('sidebarLogo').src = settings.logo;
-    document.getElementById('sidebarLogo').style.display = 'block';
-    document.getElementById('logoPreviewImg').src = settings.logo;
-    document.getElementById('logoPreviewImg').style.display = 'block';
-    document.getElementById('logoPlaceholder').style.display = 'none';
     saveLocalSettings();
+    applySettings(); // Re-apply to update images
   };
   reader.readAsDataURL(file);
 }
 
 function removeLogo() {
   settings.logo = '';
-  document.getElementById('sidebarLogo').src = '';
-  document.getElementById('logoPreviewImg').src = '';
-  document.getElementById('logoPreviewImg').style.display = 'none';
-  document.getElementById('logoPlaceholder').style.display = 'block';
+  const sidebarLogo = document.getElementById('sidebarLogo');
+  if (sidebarLogo) { sidebarLogo.src = ''; sidebarLogo.style.display = 'none'; }
+  
+  const previewImg = document.getElementById('logoPreviewImg');
+  if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
+  
+  const placeholder = document.getElementById('logoPlaceholder');
+  if (placeholder) placeholder.style.display = 'block';
+  
   saveLocalSettings();
 }
 
+// 🌟 แก้ไขระบบอัปโหลดให้ปลอดภัย ไม่เด้ง และกรองข้อมูลครบ
 async function importMB52(e) {
   const file = e.target.files[0];
   if (!file) return;
   
   const uploadBtn = e.target.previousElementSibling;
-  const originalHtml = uploadBtn.innerHTML;
-  uploadBtn.innerHTML = '⏳ กำลังอัปโหลดขึ้น Database...';
-  uploadBtn.disabled = true;
+  const originalHtml = uploadBtn ? uploadBtn.innerHTML : '📂 อัพโหลด MB52';
+  
+  if (uploadBtn) {
+      uploadBtn.innerHTML = '⏳ กำลังอัปโหลดขึ้น Database...';
+      uploadBtn.disabled = true;
+  }
 
   const reader = new FileReader();
   reader.onload = async ev => {
     const lines = ev.target.result.split('\n');
     let dbPayload = [];
+    let uniqueCodes = new Set(); // ตัวแปรป้องกันรหัสซ้ำ
     
     lines.forEach(line => {
       const parts = line.split('\t');
       if (parts.length >= 2) {
-        const code = parts[0].trim();
+        let code = parts[0].trim();
         const desc = parts[1].replace(/^"|"$/g, '').trim();
-        if (code && desc && code.match(/^\d/)) {
-          dbPayload.push({ material_code: code, material_desc: desc });
+        
+        // ลบช่องว่างหรืออักขระแปลกปลอมออกจากรหัส
+        code = code.replace(/[^0-9A-Za-z-]/g, '');
+        
+        // ถ้ามีรหัส มีชื่อ และยังไม่เคยเจอในไฟล์นี้ ให้บันทึก
+        if (code && desc) {
+            if (!uniqueCodes.has(code)) {
+                uniqueCodes.add(code);
+                dbPayload.push({ material_code: code, material_desc: desc });
+            }
         }
       }
     });
 
     if(dbPayload.length === 0) {
-        alert("ไม่พบข้อมูลพัสดุในไฟล์");
-        uploadBtn.innerHTML = originalHtml;
-        uploadBtn.disabled = false;
+        alert("ไม่พบข้อมูลพัสดุ หรือรูปแบบไฟล์ไม่ถูกต้อง");
+        if (uploadBtn) {
+            uploadBtn.innerHTML = originalHtml;
+            uploadBtn.disabled = false;
+        }
         return;
     }
 
     try {
-        const chunkSize = 1000;
+        // ลดขนาดส่งลงเหลือ 500 ป้องกัน Timeout
+        const chunkSize = 500;
         for (let i = 0; i < dbPayload.length; i += chunkSize) {
             const chunk = dbPayload.slice(i, i + chunkSize);
             const { error } = await supabaseClient
@@ -247,8 +311,13 @@ async function importMB52(e) {
         settings.mb52LastUpdate = new Date().toLocaleDateString('th-TH');
         saveLocalSettings();
 
-        document.getElementById('mb52Count').textContent = mb52Data.length;
-        document.getElementById('mb52LastUpdate').textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
+        // เช็คก่อนอัปเดตหน้าจอ ป้องกัน Error เด้ง
+        const countEl = document.getElementById('mb52Count');
+        if (countEl) countEl.textContent = mb52Data.length;
+        
+        const updateEl = document.getElementById('mb52LastUpdate');
+        if (updateEl) updateEl.textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
+        
         updateMB52Badge();
         
         alert(`อัปโหลดข้อมูล MB52 สำเร็จ: ${mb52Data.length} รายการ (บันทึกบนคลาวด์แล้ว)`);
@@ -257,8 +326,12 @@ async function importMB52(e) {
         console.error("Upload MB52 Error:", err);
         alert("เกิดข้อผิดพลาดในการอัปโหลด: " + err.message);
     } finally {
-        uploadBtn.innerHTML = originalHtml;
-        uploadBtn.disabled = false;
+        if (uploadBtn) {
+            uploadBtn.innerHTML = originalHtml;
+            uploadBtn.disabled = false;
+        }
+        // ล้างค่า input ให้เลือกไฟล์เดิมซ้ำได้
+        if (e.target) e.target.value = '';
     }
   };
   reader.readAsText(file, 'TIS-620');
@@ -266,6 +339,8 @@ async function importMB52(e) {
 
 function updateMB52Badge() {
   const badge = document.getElementById('mb52StatusBadge');
+  if (!badge) return; // ป้องกันพังถ้าไม่มีแท็กนี้
+  
   if (mb52Data.length > 0) {
     badge.className = 'badge badge-green';
     badge.textContent = `MB52: ${mb52Data.length} รายการ`;
