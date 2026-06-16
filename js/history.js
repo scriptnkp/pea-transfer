@@ -2,7 +2,6 @@
 function renderRecords() {
   const q = document.getElementById('searchRec').value.toLowerCase();
   
-  // เพิ่มระบบค้นหาให้ครอบคลุมถึงชื่อผู้ให้โอน (donor) ในรายการพัสดุด้วย
   const filtered = records.filter(r =>
     (r.docno || '').toLowerCase().includes(q) ||
     (r.from || '').toLowerCase().includes(q) ||
@@ -17,7 +16,6 @@ function renderRecords() {
   }
   
   tbody.innerHTML = filtered.map((r, i) => {
-    // ดึงชื่อผู้ให้โอนที่ไม่ซ้ำกันมาจากรายการพัสดุ
     const uniqueDonors = [...new Set((r.rows || []).map(item => item.donor).filter(Boolean))].join(', ');
     
     return `
@@ -39,7 +37,6 @@ function renderRecords() {
   }).join('');
 }
 
-// ── เปิด Modal กรอกเลขที่ ──
 function updateDocNo(id) {
   const r = records.find(x => x.id === id);
   if (!r) return;
@@ -56,7 +53,6 @@ function closeDocNoModal() {
   document.getElementById('m_docno_input').value = '';
 }
 
-// ── บันทึกเลขที่กลับไปยัง Supabase ──
 async function saveDocNoDB() {
   const id = Number(document.getElementById('m_docno_id').value);
   const newDocNo = document.getElementById('m_docno_input').value.trim() || '-';
@@ -65,7 +61,6 @@ async function saveDocNoDB() {
   if (!r) return;
 
   try {
-      // ใช้ supabaseClient ให้ตรงกับที่ประการใน app.js
       const { error } = await supabaseClient
           .from('documents')
           .update({ doc_no: newDocNo })
@@ -83,12 +78,12 @@ async function saveDocNoDB() {
   }
 }
 
-// ── โหลดข้อมูลใส่ฟอร์ม ──
 function loadRecord(id) {
   const r = records.find(x => x.id === id);
   if (!r) return;
   document.getElementById('f_from').value = r.from || '';
   document.getElementById('f_to').value = r.to || '';
+  document.getElementById('f_attention').value = r.attention || 'อก.บพ.ฉ.1'; // โหลดข้อมูลเรียนกลับสู่ฟอร์ม
   document.getElementById('f_docno').value = r.docno === '-' ? '' : r.docno;
   document.getElementById('f_date').value = r.date || '';
   document.getElementById('f_body').value = r.body || '';
@@ -116,12 +111,10 @@ function loadRecord(id) {
   showPage('form');
 }
 
-// ── ลบข้อมูลจาก Database ──
 async function deleteRecordFromDB(id) {
   if (!confirm('ยืนยันการลบเอกสารนี้ออกจากระบบ? ไม่สามารถกู้คืนได้')) return;
   
   try {
-      // ใช้ supabaseClient ให้ตรงกับที่ประการใน app.js
       const { error } = await supabaseClient
           .from('documents')
           .delete()

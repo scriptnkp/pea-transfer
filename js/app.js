@@ -5,14 +5,14 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── State (Global Variables) ──
 let records = []; 
-let mb52Data = []; // ตอนนี้จะถูกโหลดมาจาก Supabase กลาง
+let mb52Data = []; 
 let settings = {
   orgTh: 'การไฟฟ้าส่วนภูมิภาค',
   orgEn: 'PROVINCIAL ELECTRICITY AUTHORITY',
   defaultFrom: '',
   defaultTo: 'กบพ.ฉ.1',
   logo: '',
-  mb52LastUpdate: '', // เก็บวันที่อัปเดตล่าสุด
+  mb52LastUpdate: '', 
 };
 
 // ── Init ──
@@ -28,7 +28,6 @@ async function init() {
   
   if (window.innerWidth < 768) document.getElementById('menuBtn').style.display = 'block';
 
-  // 🌟 โหลดข้อมูลประวัติ และพัสดุ MB52 จาก Supabase พร้อมๆ กัน
   await Promise.all([
       fetchRecordsFromDB(),
       fetchMB52FromDB()
@@ -46,7 +45,7 @@ async function fetchRecordsFromDB() {
         const { data: docs, error } = await supabaseClient
             .from('documents')
             .select(`
-                id, doc_no, from_unit, to_unit, doc_date, body_text, signer_name, sub_position, main_position,
+                id, doc_no, from_unit, to_unit, attention_to, doc_date, body_text, signer_name, sub_position, main_position,
                 document_items ( item_code, item_desc, batch, qty, donor_unit, storage_location )
             `)
             .order('created_at', { ascending: false });
@@ -58,6 +57,7 @@ async function fetchRecordsFromDB() {
             docno: d.doc_no,
             from: d.from_unit,
             to: d.to_unit,
+            attention: d.attention_to || 'อก.บพ.ฉ.1',
             date: d.doc_date,
             body: d.body_text,
             signer: d.signer_name,
@@ -87,10 +87,8 @@ async function fetchRecordsFromDB() {
     }
 }
 
-// 🌟 ฟังก์ชันใหม่: ดึงข้อมูลพัสดุกลางจากฐานข้อมูล
 async function fetchMB52FromDB() {
     try {
-        // ใช้คำสั่ง select เพื่อดึงข้อมูลทั้งหมดมาไว้ทำ Autocomplete
         const { data, error } = await supabaseClient
             .from('mb52_materials')
             .select('material_code, material_desc');
@@ -201,12 +199,10 @@ function removeLogo() {
   saveLocalSettings();
 }
 
-// 🌟 อัปเดต: เปลี่ยนระบบอ่านไฟล์และโยนเข้า Database
 async function importMB52(e) {
   const file = e.target.files[0];
   if (!file) return;
   
-  // แจ้งเตือนผู้ใช้ระหว่างอัปโหลด
   const uploadBtn = e.target.previousElementSibling;
   const originalHtml = uploadBtn.innerHTML;
   uploadBtn.innerHTML = '⏳ กำลังอัปโหลดขึ้น Database...';
@@ -217,7 +213,6 @@ async function importMB52(e) {
     const lines = ev.target.result.split('\n');
     let dbPayload = [];
     
-    // จัดรูปแบบข้อมูลเตรียมส่งเข้า DB
     lines.forEach(line => {
       const parts = line.split('\t');
       if (parts.length >= 2) {
@@ -237,11 +232,9 @@ async function importMB52(e) {
     }
 
     try {
-        // ต้องแบ่งส่งเป็นชุด (Chunking) ชุดละ 1000 รายการ ป้องกัน Request ปฏิเสธ (Payload Too Large)
         const chunkSize = 1000;
         for (let i = 0; i < dbPayload.length; i += chunkSize) {
             const chunk = dbPayload.slice(i, i + chunkSize);
-            // ใช้ .upsert คือ ถ้ารหัสพัสดุมีอยู่แล้วให้อัปเดตชื่อใหม่ให้ ถ้าไม่มีให้เพิ่มใหม่
             const { error } = await supabaseClient
                 .from('mb52_materials')
                 .upsert(chunk, { onConflict: 'material_code' });
@@ -249,10 +242,8 @@ async function importMB52(e) {
             if (error) throw error;
         }
 
-        // อัปเดตข้อมูลมาใส่ Global State ทันทีไม่ต้องโหลดหน้าเว็บใหม่
         mb52Data = dbPayload.map(item => ({ code: item.material_code, desc: item.material_desc }));
 
-        // บันทึกวันที่อัปเดตลง LocalSettings
         settings.mb52LastUpdate = new Date().toLocaleDateString('th-TH');
         saveLocalSettings();
 

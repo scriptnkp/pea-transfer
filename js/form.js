@@ -151,6 +151,7 @@ function getFormData() {
   return {
     from: document.getElementById('f_from').value,
     to: document.getElementById('f_to').value,
+    attention: document.getElementById('f_attention').value, // ดึงค่าช่องเรียน
     docno: document.getElementById('f_docno').value || '-', 
     date: document.getElementById('f_date').value,
     body: document.getElementById('f_body').value,
@@ -172,13 +173,13 @@ async function saveRecordToDB() {
   btn.disabled = true;
 
   try {
-      // ใช้ supabaseClient
       const { data: insertedDoc, error: docError } = await supabaseClient
           .from('documents')
           .insert([{
               doc_no: data.docno,
               from_unit: data.from,
               to_unit: data.to,
+              attention_to: data.attention, // เก็บค่าเรียนลงฐานข้อมูล
               doc_date: data.date,
               body_text: data.body,
               signer_name: data.signer,
@@ -222,6 +223,7 @@ async function saveRecordToDB() {
 function clearForm() {
   document.getElementById('f_from').value = settings.defaultFrom || '';
   document.getElementById('f_to').value = settings.defaultTo || 'กบพ.ฉ.1';
+  document.getElementById('f_attention').value = 'อก.บพ.ฉ.1'; // คืนค่าเริ่มต้นช่องเรียน
   document.getElementById('f_docno').value = '';
   document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
   document.getElementById('f_body').value = '';
@@ -262,10 +264,10 @@ function buildPDFHtml(data) {
       <span>เลขที่</span><span class="val">${data.docno === '-' ? '' : data.docno}</span>
       <span>วันที่</span><span class="val">${formatThaiDate(data.date)}</span>
       <span>เรื่อง</span><span class="val" style="grid-column:2/5;">ขออนุมัติโอนพัสดุ-อุปกรณ์</span>
-      <span>เรียน</span><span class="val" style="grid-column:2/5;">อก.บพ.ฉ.1</span>
+      <span>เรียน</span><span class="val" style="grid-column:2/5;">${data.attention}</span>
     </div>
     ${bodyParagraphs}
-    <div class="pdf-body">ดังนั้น ผตพ. ${data.from} จึงขอโอนพัสดุ-อุปกรณ์ และได้ติดต่อประสานงาน กับ คลังปลายทาง เรียบร้อย โดย ${data.from} จะเป็นผู้ดำเนิน การขนส่งเอง ดังรายการต่อไปนี้</div>
+    <div class="pdf-body">ดังนั้น ผคพ. ${data.from} จึงขอโอนพัสดุ-อุปกรณ์ และได้ติดต่อประสานงาน กับ คลังปลายทาง เรียบร้อย โดย ${data.from} จะเป็นผู้ดำเนิน การขนส่งเอง ดังรายการต่อไปนี้</div>
     <table class="pdf-table">
       <thead>
         <tr>
