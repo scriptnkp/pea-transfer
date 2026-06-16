@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบขออนุมัติโอนพัสดุ-อุปกรณ์ PEA</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="app-shell">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img id="sidebarLogo" src="" onerror="this.style.display='none'" alt="Logo">
+    <span class="org-name" id="sidebarOrgName">การไฟฟ้าส่วนภูมิภาค</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" onclick="showPage('form')" id="nav-form">
+      <span class="nav-icon">📋</span><span>กรอกแบบฟอร์ม</span>
+    </div>
+    <div class="nav-item" onclick="showPage('records')" id="nav-records">
+      <span class="nav-icon">📁</span><span>ประวัติเอกสาร</span>
+    </div>
+    <div class="nav-item" onclick="showPage('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </div>
+    <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+      <span class="nav-icon">⚙️</span><span>ตั้งค่า</span>
+    </div>
+  </nav>
+</aside>
+
+<div class="main-content">
+  <div class="topbar">
+    <button onclick="toggleSidebar()" style="background:none;border:none;font-size:22px;cursor:pointer;min-height:auto;display:none;" id="menuBtn">☰</button>
+    <h1 id="pageTitle">กรอกแบบฟอร์มขออนุมัติโอนพัสดุ</h1>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="syncStatusBadge" class="badge badge-blue">🔄 กำลังเชื่อมต่อฐานข้อมูล...</span>
+      <span id="mb52StatusBadge" class="badge badge-green">MB52 พร้อมใช้</span>
+    </div>
+  </div>
+
+  <div class="page-content">
+
+    <div id="page-form">
+      <div class="card">
+        <div class="card-title">ข้อมูลหนังสือ</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>จาก <span class="req">*</span></label>
+            <input type="text" id="f_from" placeholder="เช่น กฟจ.สกลนคร" oninput="syncFromField()">
+          </div>
+          <div class="form-group">
+            <label>ถึง <span class="req">*</span></label>
+            <input type="text" id="f_to" value="กบพ.ฉ.1" placeholder="กบพ.ฉ.1">
+          </div>
+          <div class="form-group">
+            <label>เลขที่หนังสือ <span class="req">*</span></label>
+            <input type="text" id="f_docno" placeholder="ฉ.๑ สน.(พน.) ๒๑๐๖/๒๕6๙">
+          </div>
+          <div class="form-group">
+            <label>วันที่ <span class="req">*</span></label>
+            <input type="date" id="f_date" value="">
+          </div>
+          <div class="form-group full">
+            <label>ด้วย <span class="req">*</span> <small style="color:#718096;font-weight:400;">(สัมพันธ์กับ "จาก")</small></label>
+            <textarea id="f_body" rows="6" style="min-height:auto;" placeholder="ด้วย กฟจ.สกลนคร ขออนุมัติโอนพัสดุ-อุปกรณ์ เพื่อใช้งานผู้ใช้ไฟและงบโครงการ ของ กฟจ.สกลนคร&#10;เนื่องจากพัสดุคงคลังขาดแคลน เพื่อให้งานแล้วเสร็จทันตามเป้าหมายแผนงานและเป็นการบริการผู้ใช้ไฟตามมาตรฐานคุณภาพบริการ ของ กฟจ.สกลนคร"></textarea>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top: 14px;">
+            <div class="form-group">
+              <label>ลงชื่อ (ผู้ลงนาม)</label>
+              <input type="text" id="f_signer" placeholder="นายทวี สราญรมย์">
+            </div>
+            <div class="form-group">
+              <label>ตำแหน่งปฏิบัติงานแทน (ถ้ามี)</label>
+              <input type="text" id="f_subposition" placeholder="รจก.กฟจ.สน. ปฏิบัติงานแทน">
+            </div>
+            <div class="form-group">
+              <label>ตำแหน่งหลัก</label>
+              <input type="text" id="f_mainposition" placeholder="ผจก.กฟจ.นครพนม">
+            </div>
+          </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">รายการพัสดุ</div>
+        <div class="table-wrapper">
+          <table id="itemTable">
+            <thead>
+              <tr>
+                <th>ที่</th>
+                <th>รหัสพัสดุ</th>
+                <th>รายการ</th>
+                <th>แบทช์</th>
+                <th>จำนวน</th>
+                <th>ผู้ให้โอน</th>
+                <th>ที่จัดเก็บ</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="itemBody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn btn-outline btn-sm" onclick="addRow()">+ เพิ่มรายการ</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="previewPDF()">👁 ดูตัวอย่าง PDF</button>
+        <button class="btn btn-success" onclick="exportPDF()">⬇ ดาวน์โหลด PDF</button>
+        <button class="btn btn-outline" id="btnSave" onclick="saveRecordToDB()">💾 บันทึกลงฐานข้อมูล</button>
+        <button class="btn btn-outline" onclick="clearForm()">🗑 ล้างฟอร์ม</button>
+      </div>
+    </div>
+
+    <div id="page-records" style="display:none;">
+      <div class="card">
+        <div class="card-title">ประวัติเอกสารทั้งหมด</div>
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <input type="text" id="searchRec" placeholder="🔍 ค้นหา..." oninput="renderRecords()" style="max-width:300px;min-height:36px;">
+        </div>
+        <div class="table-wrapper">
+          <table class="table-sm">
+            <thead>
+              <tr>
+                <th style="text-align:center; width:50px;">#</th>
+                <th style="text-align:center; width:120px;">วันที่</th>
+                <th style="text-align:left;">เลขที่</th>
+                <th style="text-align:left;">จาก</th>
+                <th style="text-align:left;">ถึง</th>
+                <th style="text-align:left;">รายการ</th>
+                <th style="text-align:center; width:200px;">การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody id="recordsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-dashboard" style="display:none;">
+      
+      <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <div style="font-size:14px; font-weight:700; margin-bottom:12px; color:#1e3a5f;">🔍 กรองข้อมูล Dashboard</div>
+        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: end; gap: 12px;">
+            <div class="form-group">
+                <label>ตั้งแต่วันที่</label>
+                <input type="date" id="d_startDate" onchange="renderDashboard()">
+            </div>
+            <div class="form-group">
+                <label>ถึงวันที่</label>
+                <input type="date" id="d_endDate" onchange="renderDashboard()">
+            </div>
+            <div class="form-group">
+                <label>จาก (ผู้ขอโอน)</label>
+                <select id="d_fromFilter" onchange="renderDashboard()">
+                    <option value="">-- ทั้งหมด --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>ค้นหา รหัส/รายการ</label>
+                <input type="text" id="d_search" placeholder="พิมพ์รหัส หรือ ชื่อพัสดุ..." oninput="renderDashboard()">
+            </div>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="statsGrid"></div>
+      
+      <div class="card">
+        <div class="card-title">สรุปภาพรวมการเบิกจ่าย</div>
+        <div class="chart-grid">
+          <div>
+            <div style="text-align:center; font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 8px;">จาก (ผู้ขอโอน)</div>
+            <div class="chart-bar-wrap" id="chartBarFrom"></div>
+          </div>
+          <div>
+            <div style="text-align:center; font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 8px;">แนวโน้มจำนวนรายการ (รายวัน)</div>
+            <div class="chart-bar-wrap" id="chartLineTrend" style="position:relative; display:block;"></div>
+          </div>
+          <div>
+            <div style="text-align:center; font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 8px;">ผู้ให้โอน</div>
+            <div class="chart-bar-wrap" id="chartBarDonor"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">พัสดุที่ขอโอนบ่อยที่สุด</div>
+        <div class="table-wrapper">
+          <table class="table-sm">
+            <thead><tr><th style="text-align:left;">รายการ</th><th style="text-align:center; width:100px;">จำนวนครั้ง</th><th style="text-align:center; width:100px;">จำนวนรวม</th></tr></thead>
+            <tbody id="topItemsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">รายละเอียดทั้งหมด</div>
+        <div class="table-wrapper">
+          <table class="table-sm">
+            <thead>
+              <tr>
+                <th style="text-align:center; width:90px;">วันที่</th>
+                <th style="text-align:left;">จาก</th>
+                <th style="text-align:left;">ถึง</th>
+                <th style="text-align:center;">รหัส</th>
+                <th style="text-align:left;">รายการ</th>
+                <th style="text-align:center; width:70px;">จำนวน</th>
+                <th style="text-align:left;">ผู้ให้โอน</th>
+                <th style="text-align:left;">ที่จัดเก็บ</th>
+              </tr>
+            </thead>
+            <tbody id="dashDetailBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-settings" style="display:none;">
+      <div class="card">
+        <div class="card-title">⚙️ ตั้งค่าระบบ</div>
+
+        <div class="settings-section">
+          <h3>โลโก้หน่วยงาน</h3>
+          <div class="logo-upload-box" onclick="document.getElementById('logoInput').click()">
+            <div id="logoPreviewBox">
+              <img id="logoPreviewImg" class="logo-preview" src="" style="display:none;" alt="logo">
+              <div id="logoPlaceholder">📷 คลิกเพื่ออัพโหลดโลโก้ (PNG/JPG)</div>
+            </div>
+          </div>
+          <input type="file" id="logoInput" accept="image/*" style="display:none;" onchange="uploadLogo(event)">
+          <button class="btn btn-outline btn-sm" onclick="removeLogo()" style="margin-top:8px;">ลบโลโก้</button>
+        </div>
+
+        <div class="settings-section">
+          <h3>ข้อมูลหน่วยงาน</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>ชื่อหน่วยงาน (ไทย)</label>
+              <input type="text" id="s_orgTh" value="การไฟฟ้าส่วนภูมิภาค" oninput="saveSettings()">
+            </div>
+            <div class="form-group">
+              <label>ชื่อหน่วยงาน (อังกฤษ)</label>
+              <input type="text" id="s_orgEn" value="PROVINCIAL ELECTRICITY AUTHORITY" oninput="saveSettings()">
+            </div>
+            <div class="form-group">
+              <label>ค่าเริ่มต้น "จาก"</label>
+              <input type="text" id="s_defaultFrom" value="" placeholder="กฟจ.สกลนคร" oninput="saveSettings()">
+            </div>
+            <div class="form-group">
+              <label>ค่าเริ่มต้น "ถึง"</label>
+              <input type="text" id="s_defaultTo" value="กบพ.ฉ.1" oninput="saveSettings()">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>การอัพเดทข้อมูล MB52 (บันทึกในเครื่อง)</h3>
+          <div class="switch-row">
+            <div>
+              <div style="font-weight:600;font-size:14px;">MB52 ล่าสุด</div>
+              <div style="font-size:12px;color:#718096;" id="mb52LastUpdate">ยังไม่ได้อัพโหลด</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('mb52FileInput').click()">📂 อัพโหลด MB52</button>
+          </div>
+          <input type="file" id="mb52FileInput" accept=".txt,.csv" style="display:none;" onchange="importMB52(event)">
+          <div style="margin-top:10px;font-size:12px;color:#718096;">
+            รายการในฐานข้อมูล: <strong id="mb52Count">0</strong> รายการ
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="pdfModal">
+  <div class="modal" style="max-width:860px;width:95%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;">ตัวอย่างเอกสาร</h3>
+      <button class="btn btn-outline btn-sm" onclick="closePdfModal()">✕ ปิด</button>
+    </div>
+    <div class="pdf-preview-wrap" id="pdfPreviewWrap"></div>
+    <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-success" onclick="exportPDF()">⬇ ดาวน์โหลด PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="docNoModal">
+  <div class="modal" style="max-width: 400px; width: 90%;">
+    <h3 style="margin-top:0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; color: #1e3a5f;">
+      📝 ระบุเลขที่หนังสือ
+    </h3>
+    <div class="form-group" style="margin-top: 16px;">
+      <label>เลขที่หนังสือ:</label>
+      <input type="text" id="m_docno_input" placeholder="เช่น ฉ.๑ สน.(พน.) ๒๑๐๖/๒๕๖๙">
+      <input type="hidden" id="m_docno_id">
+    </div>
+    <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeDocNoModal()">ยกเลิก</button>
+      <button class="btn btn-success" onclick="saveDocNoDB()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/form.js"></script>
+<script src="js/history.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
