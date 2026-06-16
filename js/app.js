@@ -1,12 +1,12 @@
 // ── Supabase Configuration ──
-// ตรวจสอบและตัด / ออกจาก URL ท้ายสุดเพื่อป้องกันข้อผิดพลาด
 const SUPABASE_URL = 'https://ffiejosogbzamjdxwwfr.supabase.co'; 
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmaWVqb3NvZ2J6YW1qZHh3d2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTUwNjIsImV4cCI6MjA5NzEzMTA2Mn0.jL8lix3C6npQBQw487wnoOr-KqaKF7f1GgF6Hxt_vNg';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// แก้ไขตัวแปรเป็น supabaseClient เพื่อไม่ให้ชนกับไลบรารี
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── State (Global Variables) ──
-let records = []; // จะโหลดจาก Supabase
-let mb52Data = []; // คงไว้ใน LocalStorage เพราะมีขนาดใหญ่และเป็น Master Data
+let records = []; 
+let mb52Data = []; 
 let settings = {
   orgTh: 'การไฟฟ้าส่วนภูมิภาค',
   orgEn: 'PROVINCIAL ELECTRICITY AUTHORITY',
@@ -41,20 +41,19 @@ async function fetchRecordsFromDB() {
     badge.className = 'badge badge-blue';
 
     try {
-        // ดึงเอกสารทั้งหมด พร้อมกับรายการพัสดุ (Join Table)
-        const { data: docs, error } = await supabase
+        // ใช้ supabaseClient
+        const { data: docs, error } = await supabaseClient
             .from('documents')
             .select(`
                 id, doc_no, from_unit, to_unit, doc_date, body_text, signer_name, sub_position, main_position,
                 document_items ( item_code, item_desc, batch, qty, donor_unit, storage_location )
             `)
-            .order('created_at', { ascending: false }); // เรียงล่าสุดขึ้นก่อน
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        // แปลงรูปแบบข้อมูลจาก DB ให้ตรงกับที่โค้ดเดิมเราใช้ (`records`)
         records = docs.map(d => ({
-            id: d.id, // Primary Key จาก DB
+            id: d.id,
             docno: d.doc_no,
             from: d.from_unit,
             to: d.to_unit,
@@ -77,7 +76,6 @@ async function fetchRecordsFromDB() {
         badge.className = 'badge badge-green';
         setTimeout(() => badge.style.display = 'none', 3000);
 
-        // วาดหน้าประวัติและ Dashboard ทันทีที่โหลดเสร็จ
         if(document.getElementById('page-records').style.display !== 'none' && typeof renderRecords === 'function') renderRecords();
         if(document.getElementById('page-dashboard').style.display !== 'none' && typeof renderDashboard === 'function') renderDashboard();
 

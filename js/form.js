@@ -137,7 +137,6 @@ function getFormData() {
   const rows = [];
   document.querySelectorAll('#itemBody tr').forEach(tr => {
     const inputs = tr.querySelectorAll('input');
-    // เอาเฉพาะแถวที่มีรหัส หรือชื่อพัสดุ
     if(inputs[0]?.value || inputs[1]?.value) {
         rows.push({
             code: inputs[0]?.value || '',
@@ -152,7 +151,7 @@ function getFormData() {
   return {
     from: document.getElementById('f_from').value,
     to: document.getElementById('f_to').value,
-    docno: document.getElementById('f_docno').value || '-', // ป้องกันค่าว่างเข้า DB
+    docno: document.getElementById('f_docno').value || '-', 
     date: document.getElementById('f_date').value,
     body: document.getElementById('f_body').value,
     signer: document.getElementById('f_signer').value,
@@ -173,8 +172,8 @@ async function saveRecordToDB() {
   btn.disabled = true;
 
   try {
-      // 1. Insert ลงตาราง documents ก่อน
-      const { data: insertedDoc, error: docError } = await supabase
+      // ใช้ supabaseClient
+      const { data: insertedDoc, error: docError } = await supabaseClient
           .from('documents')
           .insert([{
               doc_no: data.docno,
@@ -191,7 +190,6 @@ async function saveRecordToDB() {
 
       if (docError) throw docError;
 
-      // 2. ถ้ามีรายการพัสดุ ให้ Insert ลงตาราง document_items โดยใช้ ID ที่ได้มา
       if (data.rows.length > 0) {
           const itemsToInsert = data.rows.map(item => ({
               document_id: insertedDoc.id,
@@ -203,14 +201,13 @@ async function saveRecordToDB() {
               storage_location: item.location
           }));
 
-          const { error: itemError } = await supabase.from('document_items').insert(itemsToInsert);
+          const { error: itemError } = await supabaseClient.from('document_items').insert(itemsToInsert);
           if (itemError) throw itemError;
       }
 
       alert('บันทึกข้อมูลลงระบบเรียบร้อยแล้ว!');
       clearForm();
       
-      // ดึงข้อมูลใหม่มาอัปเดตหน้าประวัติ
       await fetchRecordsFromDB();
 
   } catch (err) {
@@ -237,7 +234,7 @@ function clearForm() {
   addRow();
 }
 
-// ── PDF Creation (เหมือนเดิม) ──
+// ── PDF Creation ──
 function buildPDFHtml(data) {
   const logo = settings.logo ? `<img src="${settings.logo}" class="pdf-logo" alt="logo">` : '';
   const rows = data.rows.map((r, i) => `
