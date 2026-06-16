@@ -1,7 +1,6 @@
 // ── Supabase Configuration ──
 const SUPABASE_URL = 'https://ffiejosogbzamjdxwwfr.supabase.co'; 
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmaWVqb3NvZ2J6YW1qZHh3d2ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTUwNjIsImV4cCI6MjA5NzEzMTA2Mn0.jL8lix3C6npQBQw487wnoOr-KqaKF7f1GgF6Hxt_vNg';
-// ใช้ตัวแปร supabaseClient ป้องกันการชนกับชื่อไลบรารี
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── State (Global Variables) ──
@@ -29,7 +28,6 @@ async function init() {
   
   if (window.innerWidth < 768) document.getElementById('menuBtn').style.display = 'block';
 
-  // โหลดข้อมูลประวัติและ MB52 จาก DB พร้อมกัน
   await Promise.all([
       fetchRecordsFromDB(),
       fetchMB52FromDB()
@@ -201,7 +199,6 @@ function removeLogo() {
   saveLocalSettings();
 }
 
-// ── Import MB52 (เพิ่มขีดอัตโนมัติ) ──
 async function importMB52(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -216,24 +213,13 @@ async function importMB52(e) {
     const lines = ev.target.result.split('\n');
     let dbPayload = [];
     
-    // ฟังก์ชันช่วยเติมขีดให้รหัสพัสดุ 10 หลัก (X-XX-XXX-XXXX)
-    const formatPeaCode = (code) => {
-        const cleanCode = code.replace(/[^0-9]/g, '');
-        if (cleanCode.length === 10) {
-            return `${cleanCode.substring(0,1)}-${cleanCode.substring(1,3)}-${cleanCode.substring(3,6)}-${cleanCode.substring(6,10)}`;
-        }
-        return code;
-    };
-    
     lines.forEach(line => {
       const parts = line.split('\t');
       if (parts.length >= 2) {
-        const rawCode = parts[0].trim();
+        const code = parts[0].trim();
         const desc = parts[1].replace(/^"|"$/g, '').trim();
-        
-        if (rawCode && desc && rawCode.match(/^\d/)) {
-          const formattedCode = formatPeaCode(rawCode);
-          dbPayload.push({ material_code: formattedCode, material_desc: desc });
+        if (code && desc && code.match(/^\d/)) {
+          dbPayload.push({ material_code: code, material_desc: desc });
         }
       }
     });
@@ -265,7 +251,7 @@ async function importMB52(e) {
         document.getElementById('mb52LastUpdate').textContent = 'อัพโหลดล่าสุด: ' + settings.mb52LastUpdate;
         updateMB52Badge();
         
-        alert(`อัปโหลดข้อมูล MB52 สำเร็จ: ${mb52Data.length} รายการ (จัดรูปแบบรหัสและบันทึกบนคลาวด์แล้ว)`);
+        alert(`อัปโหลดข้อมูล MB52 สำเร็จ: ${mb52Data.length} รายการ (บันทึกบนคลาวด์แล้ว)`);
 
     } catch (err) {
         console.error("Upload MB52 Error:", err);
