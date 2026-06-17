@@ -317,7 +317,7 @@ function buildPDFHtml(data) {
       <span>เรียน</span><span class="val" style="grid-column:2/5;">${data.attention}</span>
     </div>
     ${bodyParagraphs}
-    <div class="pdf-body">ดังนั้น ผตพ. ${data.from} จึงขอโอนพัสดุ-อุปกรณ์ และได้ติดต่อประสานงาน กับ คลังปลายทาง เรียบร้อย โดย ${data.from} จะเป็นผู้ดำเนิน การขนส่งเอง ดังรายการต่อไปนี้</div>
+    <div class="pdf-body">ดังนั้น ผคพ. ${data.from} จึงขอโอนพัสดุ-อุปกรณ์ และได้ติดต่อประสานงาน กับ คลังปลายทาง เรียบร้อย โดย ${data.from} จะเป็นผู้ดำเนิน การขนส่งเอง ดังรายการต่อไปนี้</div>
     <table class="pdf-table">
       <thead>
         <tr>
