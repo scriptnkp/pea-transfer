@@ -10,9 +10,10 @@ let settings = {
   orgTh: 'การไฟฟ้าส่วนภูมิภาค',
   orgEn: 'PROVINCIAL ELECTRICITY AUTHORITY',
   defaultFrom: '',
-  defaultTo: 'กบพ.(ฉ1)',
+  defaultTo: 'กบพ.ฉ.1',
   logo: '',
   mb52LastUpdate: '', 
+  footerContact: 'ผคพ.กฟจ.นพ.\nโทร 042-516191\nดาวเทียม 21-14630'
 };
 
 // ── Init ──
@@ -157,6 +158,9 @@ function applySettings() {
   const sDefaultTo = document.getElementById('s_defaultTo');
   if (sDefaultTo) sDefaultTo.value = settings.defaultTo;
 
+  const sFooterContact = document.getElementById('s_footerContact');
+  if (sFooterContact) sFooterContact.value = settings.footerContact;
+
   if (settings.logo) {
     const sidebarLogo = document.getElementById('sidebarLogo');
     if (sidebarLogo) { sidebarLogo.src = settings.logo; sidebarLogo.style.display = 'block'; }
@@ -214,6 +218,7 @@ function saveSettings() {
   settings.orgEn = document.getElementById('s_orgEn')?.value || settings.orgEn;
   settings.defaultFrom = document.getElementById('s_defaultFrom')?.value || '';
   settings.defaultTo = document.getElementById('s_defaultTo')?.value || '';
+  settings.footerContact = document.getElementById('s_footerContact')?.value || '';
   
   const orgNameEl = document.getElementById('sidebarOrgName');
   if (orgNameEl) orgNameEl.textContent = settings.orgTh;
@@ -228,7 +233,7 @@ function uploadLogo(e) {
   reader.onload = ev => {
     settings.logo = ev.target.result;
     saveLocalSettings();
-    applySettings(); // Re-apply to update images
+    applySettings();
   };
   reader.readAsDataURL(file);
 }
@@ -247,7 +252,7 @@ function removeLogo() {
   saveLocalSettings();
 }
 
-// 🌟 แก้ไขระบบอัปโหลดให้ปลอดภัย ไม่เด้ง และกรองข้อมูลครบ
+// ── Import MB52 (เพิ่มขีดอัตโนมัติ กรองซ้ำ ลดขนาดก้อนข้อมูลป้องกัน Timeout) ──
 async function importMB52(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -264,29 +269,35 @@ async function importMB52(e) {
   reader.onload = async ev => {
     const lines = ev.target.result.split('\n');
     let dbPayload = [];
-    let uniqueCodes = new Set(); // ตัวแปรป้องกันรหัสซ้ำ
+    let uniqueCodes = new Set();
+    
+    const formatPeaCode = (code) => {
+        const cleanCode = code.replace(/[^0-9]/g, '');
+        if (cleanCode.length === 10) {
+            return `${cleanCode.substring(0,1)}-${cleanCode.substring(1,3)}-${cleanCode.substring(3,6)}-${cleanCode.substring(6,10)}`;
+        }
+        return code;
+    };
     
     lines.forEach(line => {
       const parts = line.split('\t');
       if (parts.length >= 2) {
-        let code = parts[0].trim();
+        const rawCode = parts[0].trim();
         const desc = parts[1].replace(/^"|"$/g, '').trim();
         
-        // ลบช่องว่างหรืออักขระแปลกปลอมออกจากรหัส
-        code = code.replace(/[^0-9A-Za-z-]/g, '');
-        
-        // ถ้ามีรหัส มีชื่อ และยังไม่เคยเจอในไฟล์นี้ ให้บันทึก
-        if (code && desc) {
-            if (!uniqueCodes.has(code)) {
-                uniqueCodes.add(code);
-                dbPayload.push({ material_code: code, material_desc: desc });
-            }
+        if (rawCode && desc && rawCode.match(/^\d/)) {
+          const formattedCode = formatPeaCode(rawCode);
+          
+          if (!uniqueCodes.has(formattedCode)) {
+              uniqueCodes.add(formattedCode);
+              dbPayload.push({ material_code: formattedCode, material_desc: desc });
+          }
         }
       }
     });
 
     if(dbPayload.length === 0) {
-        alert("ไม่พบข้อมูลพัสดุ หรือรูปแบบไฟล์ไม่ถูกต้อง");
+        alert("ไม่พบข้อมูลพัสดุในไฟล์");
         if (uploadBtn) {
             uploadBtn.innerHTML = originalHtml;
             uploadBtn.disabled = false;
@@ -295,7 +306,6 @@ async function importMB52(e) {
     }
 
     try {
-        // ลดขนาดส่งลงเหลือ 500 ป้องกัน Timeout
         const chunkSize = 500;
         for (let i = 0; i < dbPayload.length; i += chunkSize) {
             const chunk = dbPayload.slice(i, i + chunkSize);
@@ -311,7 +321,6 @@ async function importMB52(e) {
         settings.mb52LastUpdate = new Date().toLocaleDateString('th-TH');
         saveLocalSettings();
 
-        // เช็คก่อนอัปเดตหน้าจอ ป้องกัน Error เด้ง
         const countEl = document.getElementById('mb52Count');
         if (countEl) countEl.textContent = mb52Data.length;
         
@@ -320,7 +329,7 @@ async function importMB52(e) {
         
         updateMB52Badge();
         
-        alert(`อัปโหลดข้อมูล MB52 สำเร็จ: ${mb52Data.length} รายการ (บันทึกบนคลาวด์แล้ว)`);
+        alert(`อัปโหลดข้อมูล MB52 สำเร็จ: ${mb52Data.length} รายการ (จัดรูปแบบรหัสและบันทึกบนคลาวด์แล้ว)`);
 
     } catch (err) {
         console.error("Upload MB52 Error:", err);
@@ -330,7 +339,6 @@ async function importMB52(e) {
             uploadBtn.innerHTML = originalHtml;
             uploadBtn.disabled = false;
         }
-        // ล้างค่า input ให้เลือกไฟล์เดิมซ้ำได้
         if (e.target) e.target.value = '';
     }
   };
@@ -339,7 +347,7 @@ async function importMB52(e) {
 
 function updateMB52Badge() {
   const badge = document.getElementById('mb52StatusBadge');
-  if (!badge) return; // ป้องกันพังถ้าไม่มีแท็กนี้
+  if (!badge) return;
   
   if (mb52Data.length > 0) {
     badge.className = 'badge badge-green';

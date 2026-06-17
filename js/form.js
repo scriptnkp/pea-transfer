@@ -37,8 +37,8 @@ function addRow() {
     </td>
     <td><input type="text" id="batch-${rowCount}" value="N" style="width:50px;text-align:center;"></td>
     <td><input type="number" id="qty-${rowCount}" value="1" min="1" style="width:70px;text-align:center;"></td>
-    <td><input type="text" id="donor-${rowCount}" placeholder="กฟจ.นครพนม" style="min-width:160px;"></td>
-    <td><input type="text" id="location-${rowCount}" placeholder="0021" style="min-width:130px;"></td>
+    <td><input type="text" id="donor-${rowCount}" placeholder="กฟจ.นครพนม (D060)0021" style="min-width:160px;"></td>
+    <td><input type="text" id="location-${rowCount}" placeholder="คลังกลาง / ชั้น 2" style="min-width:130px;"></td>
     <td><button class="btn-icon" onclick="removeRow(${rowCount})" title="ลบ">🗑</button></td>
   `;
   tbody.appendChild(tr);
@@ -93,12 +93,10 @@ function selectCode(id, code, desc) {
   document.getElementById('acCode-' + id).style.display = 'none';
   document.getElementById('acDesc-' + id).style.display = 'none';
   
-  // โฟกัสไปที่แบทช์
   const b = document.getElementById('batch-' + id);
   if (b) b.focus();
 }
 
-// 🌟 ฟังก์ชันดักจับการกดคีย์บอร์ด (อัปเดตให้รองรับ 10 หลักอัตโนมัติ)
 function acNavKey(e, id, type) {
   const key = e.key;
   const listEl = document.getElementById('ac' + type.charAt(0).toUpperCase() + type.slice(1) + '-' + id);
@@ -116,37 +114,27 @@ function acNavKey(e, id, type) {
   else if (key === 'Enter' || key === 'Tab') {
       e.preventDefault();
 
-      // ถ้ายืนอยู่ช่อง "รหัสพัสดุ"
       if (type === 'code') {
           const inputEl = document.getElementById(`code-${id}`);
           const rawVal = inputEl.value.trim();
-          
-          // ลบอักขระพิเศษออกเหลือแต่ตัวเลข/ตัวอักษรเพื่อเช็คความยาว
           const cleanCode = rawVal.replace(/[^0-9A-Za-z]/g, '');
 
-          // ตรวจสอบว่าถ้าพิมพ์หรือสแกนมา 10 หลักเป๊ะ ให้จัด Format
           if (cleanCode.length === 10) {
               const formattedCode = `${cleanCode.substring(0,1)}-${cleanCode.substring(1,3)}-${cleanCode.substring(3,6)}-${cleanCode.substring(6,10)}`;
-              
-              // ค้นหาในฐานข้อมูลว่ามีรหัสนี้หรือไม่
               const foundItem = mb52Data.find(x => x.code === formattedCode || x.code === cleanCode);
               
               if (foundItem) {
-                  // ถ้าเจอ ให้แปลงรหัส เติมชื่อ และย้ายเคอร์เซอร์ให้ทันที
                   selectCode(id, foundItem.code, foundItem.desc);
                   return;
               } else {
-                  // ถ้าไม่เจอใน MB52 อย่างน้อยก็ช่วยจัด Format ให้สวยงาม
                   inputEl.value = formattedCode;
               }
           }
       }
 
-      // ลอจิกเดิม: สำหรับกรณีที่ค้นหาบางส่วน (เช่น พิมพ์แค่ 1-00) แล้วกด Enter เลือกจาก Dropdown
       if (results && results.length > 0 && listEl.style.display !== 'none') {
           selectCode(id, results[sel].code, results[sel].desc);
       } else {
-          // ถ้าไม่ได้เลือกอะไร ปิด List แล้วย้ายไปช่องถัดไป
           listEl.style.display = 'none';
           const nextInput = document.getElementById(`batch-${id}`);
           if (nextInput) nextInput.focus();
@@ -157,10 +145,9 @@ function acNavKey(e, id, type) {
       listEl.style.display = 'none'; 
       return; 
   } else {
-      return; // ปล่อยให้พิมพ์อักษรปกติต่อไป
+      return;
   }
   
-  // ไฮไลต์รายการที่เลือกด้วยลูกศรขึ้น/ลง
   acSel[id + type] = sel;
   listEl.querySelectorAll('.ac-item').forEach((el, i) => el.classList.toggle('selected', i === sel));
   listEl.querySelectorAll('.ac-item')[sel]?.scrollIntoView({ block: 'nearest' });
@@ -201,7 +188,7 @@ function getFormData() {
   return {
     from: document.getElementById('f_from').value,
     to: document.getElementById('f_to').value,
-    attention: document.getElementById('f_attention').value, // ดึงค่าช่องเรียน
+    attention: document.getElementById('f_attention').value,
     docno: document.getElementById('f_docno').value || '-', 
     date: document.getElementById('f_date').value,
     body: document.getElementById('f_body').value,
@@ -229,7 +216,7 @@ async function saveRecordToDB() {
               doc_no: data.docno,
               from_unit: data.from,
               to_unit: data.to,
-              attention_to: data.attention, // เก็บค่าเรียนลงฐานข้อมูล
+              attention_to: data.attention,
               doc_date: data.date,
               body_text: data.body,
               signer_name: data.signer,
@@ -273,7 +260,7 @@ async function saveRecordToDB() {
 function clearForm() {
   document.getElementById('f_from').value = settings.defaultFrom || '';
   document.getElementById('f_to').value = settings.defaultTo || 'กบพ.ฉ.1';
-  document.getElementById('f_attention').value = 'อก.บพ.ฉ.1'; // คืนค่าเริ่มต้นช่องเรียน
+  document.getElementById('f_attention').value = 'อก.บพ.ฉ.1';
   document.getElementById('f_docno').value = '';
   document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
   document.getElementById('f_body').value = '';
@@ -302,6 +289,7 @@ function buildPDFHtml(data) {
 
   const bodyParagraphs = `<div class="pdf-body">${data.body.replace(/\n/g, '<br>')}</div>`;
   const subPosHtml = data.subposition ? `<div>${data.subposition}</div>` : '';
+  const footerContactHtml = settings.footerContact ? `<div class="pdf-footer-contact">${settings.footerContact.replace(/\n/g, '<br>')}</div>` : '';
 
   return `
   <div class="pdf-page" id="pdfPageEl">
@@ -333,6 +321,7 @@ function buildPDFHtml(data) {
       ${subPosHtml}
       <div>${data.mainposition}</div>
     </div>
+    ${footerContactHtml}
   </div>`;
 }
 
@@ -372,6 +361,8 @@ async function exportPDF() {
     
     .pdf-sig{margin-top:50px;text-align:center;}
     .pdf-sig .sig-name { margin-bottom: 5px; }
+    
+    .pdf-footer-contact { position: absolute; bottom: 60px; left: 72px; font-size: 12px; line-height: 1.8; text-align: left; }
     </style>
     ${html}
   `;

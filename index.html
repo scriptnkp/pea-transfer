@@ -6,6 +6,9 @@
 <title>ระบบขออนุมัติโอนพัสดุ-อุปกรณ์ PEA</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<style>
+  .pdf-footer-contact { position: absolute; bottom: 60px; left: 72px; font-size: 12px; line-height: 1.8; text-align: left; }
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -52,19 +55,19 @@
         <div class="form-grid">
           <div class="form-group">
             <label>จาก <span class="req">*</span></label>
-            <input type="text" id="f_from" placeholder="เช่น กฟจ.นครพนม" oninput="syncFromField()">
+            <input type="text" id="f_from" placeholder="เช่น กฟจ.สกลนคร" oninput="syncFromField()">
           </div>
           <div class="form-group">
             <label>ถึง <span class="req">*</span></label>
-            <input type="text" id="f_to" value="กบพ.(ฉ1)" placeholder="กบพ.(ฉ1)">
+            <input type="text" id="f_to" value="กบพ.ฉ.1" placeholder="กบพ.ฉ.1">
           </div>
           <div class="form-group">
             <label>เรียน <span class="req">*</span></label>
-            <input type="text" id="f_attention" value="อก.บพ.(ฉ1)" placeholder="อก.บพ.(ฉ1)">
+            <input type="text" id="f_attention" value="อก.บพ.ฉ.1" placeholder="อก.บพ.ฉ.1">
           </div>
           <div class="form-group">
             <label>เลขที่หนังสือ <span class="req">*</span></label>
-            <input type="text" id="f_docno" placeholder="ฉ.1.นพ.(คพ.)-">
+            <input type="text" id="f_docno" placeholder="ฉ.๑ สน.(พน.) ๒๑๐๖/๒๕6๙">
           </div>
           <div class="form-group">
             <label>วันที่ <span class="req">*</span></label>
@@ -82,7 +85,7 @@
             </div>
             <div class="form-group">
               <label>ตำแหน่งปฏิบัติงานแทน (ถ้ามี)</label>
-              <input type="text" id="f_subposition" placeholder="รจก.กฟจ.นครพนม. ปฏิบัติงานแทน">
+              <input type="text" id="f_subposition" placeholder="รจก.กฟจ.สน. ปฏิบัติงานแทน">
             </div>
             <div class="form-group">
               <label>ตำแหน่งหลัก</label>
@@ -258,7 +261,11 @@
             </div>
             <div class="form-group">
               <label>ค่าเริ่มต้น "ถึง"</label>
-              <input type="text" id="s_defaultTo" value="กบพ.(ฉ1)" oninput="saveSettings()">
+              <input type="text" id="s_defaultTo" value="กบพ.ฉ.1" oninput="saveSettings()">
+            </div>
+            <div class="form-group full">
+              <label>ข้อมูลติดต่อ (มุมซ้ายล่างเอกสาร PDF)</label>
+              <textarea id="s_footerContact" rows="3" oninput="saveSettings()" placeholder="ผคพ.กฟจ.นพ.&#10;โทร 042-516191&#10;ดาวเทียม 21-14630"></textarea>
             </div>
           </div>
         </div>
